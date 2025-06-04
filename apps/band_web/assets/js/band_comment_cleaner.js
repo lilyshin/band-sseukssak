@@ -19,6 +19,8 @@ class BandCommentCleaner {
     this.apiBaseUrl = '/api';
     this.authData = this.loadAuthData();
     this.lastFailedComments = null;
+    this.selectedBandKey = null;
+    this.selectedBandName = null;
     this.init();
     
     window.bandCommentCleaner = this;
@@ -348,38 +350,97 @@ class BandCommentCleaner {
       `;
 
       bandElement.addEventListener('click', () => {
-        // 다른 밴드들의 선택 해제
-        document.querySelectorAll('input[name="selected-band"]').forEach(radio => {
-          radio.checked = false;
-          radio.closest('div').classList.remove('ring-4', 'ring-purple-400', 'bg-gradient-to-r', 'from-purple-100', 'to-pink-100');
-        });
-
-        const radio = bandElement.querySelector('input[type="radio"]');
-        radio.checked = true;
-        bandElement.classList.add('ring-4', 'ring-purple-400', 'bg-gradient-to-r', 'from-purple-100', 'to-pink-100');
-        
-        this.selectedBandKey = band.band_key;
-        this.selectedBandName = band.name;
-        
-        // 삭제 섹션 활성화
-        document.getElementById('delete-section').classList.remove('opacity-50');
-        document.getElementById('delete-btn').disabled = false;
-        
-        // 이전 삭제 결과 숨기기
-        this.clearDeleteResult();
-        
-        // 현재 선택된 삭제 타입에 따라 버튼 텍스트 업데이트
-        this.updateDeleteButtonText();
+        this.selectBand(band.band_key, band.name, bandElement);
+      });
+      
+      // 라디오 버튼 클릭시에도 동일하게 처리
+      const radio = bandElement.querySelector('input[type="radio"]');
+      radio.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.selectBand(band.band_key, band.name, bandElement);
       });
 
       bandList.appendChild(bandElement);
     });
   }
 
+  selectBand(bandKey, bandName, bandElement) {
+    // 개발 모드에서만 로그 출력
+    if (window.isDevelopment) {
+      console.log('밴드 선택:', bandKey, bandName);
+    }
+    
+    // 다른 밴드들의 선택 해제
+    document.querySelectorAll('input[name="selected-band"]').forEach(radio => {
+      radio.checked = false;
+      radio.closest('div').classList.remove('ring-4', 'ring-purple-400', 'bg-gradient-to-r', 'from-purple-100', 'to-pink-100');
+    });
+
+    const radio = bandElement.querySelector('input[type="radio"]');
+    radio.checked = true;
+    bandElement.classList.add('ring-4', 'ring-purple-400', 'bg-gradient-to-r', 'from-purple-100', 'to-pink-100');
+    
+    // 선택된 밴드 정보 저장
+    this.selectedBandKey = bandKey;
+    this.selectedBandName = bandName;
+    
+    // 개발 모드에서만 로그 출력
+    if (window.isDevelopment) {
+      console.log('밴드 선택 완료. selectedBandKey:', this.selectedBandKey, 'selectedBandName:', this.selectedBandName);
+    }
+    
+    // 삭제 섹션 활성화
+    document.getElementById('delete-section').classList.remove('opacity-50');
+    document.getElementById('delete-btn').disabled = false;
+    
+    // 이전 삭제 결과 숨기기
+    this.clearDeleteResult();
+    
+    // 현재 선택된 삭제 타입에 따라 버튼 텍스트 업데이트
+    this.updateDeleteButtonText();
+  }
+
   async handleDelete() {
-    if (!this.selectedBandKey) {
+    // 선택된 밴드 다시 확인 (라디오 버튼 상태로)
+    const selectedRadio = document.querySelector('input[name="selected-band"]:checked');
+    
+    // 개발 모드에서만 디버깅 로그 출력
+    if (window.isDevelopment) {
+      console.log('handleDelete 호출');
+      console.log('this.selectedBandKey:', this.selectedBandKey);
+      console.log('this.selectedBandName:', this.selectedBandName);
+      console.log('selectedRadio:', selectedRadio);
+      console.log('selectedRadio?.value:', selectedRadio?.value);
+    }
+    
+    if (!this.selectedBandKey || !selectedRadio) {
+      // 개발 모드에서만 디버깅 로그 출력
+      if (window.isDevelopment) {
+        console.log('밴드 선택 실패 - selectedBandKey:', this.selectedBandKey, 'selectedRadio:', selectedRadio);
+      }
       this.showCustomAlert('밴드를 선택해 주세요', 'warning');
       return;
+    }
+    
+    // 라디오 버튼과 저장된 값이 다르면 동기화
+    if (selectedRadio.value !== this.selectedBandKey) {
+      if (window.isDevelopment) {
+        console.log('밴드 선택 불일치 감지. 동기화 중...');
+        console.log('기존 selectedBandKey:', this.selectedBandKey);
+        console.log('라디오 버튼 value:', selectedRadio.value);
+      }
+      
+      this.selectedBandKey = selectedRadio.value;
+      // 밴드 이름도 다시 찾아서 설정
+      const selectedBandElement = selectedRadio.closest('div');
+      const bandNameElement = selectedBandElement.querySelector('h3');
+      if (bandNameElement) {
+        this.selectedBandName = bandNameElement.textContent;
+      }
+      
+      if (window.isDevelopment) {
+        console.log('동기화 완료. 새로운 selectedBandKey:', this.selectedBandKey, 'selectedBandName:', this.selectedBandName);
+      }
     }
 
     const selectedType = document.querySelector('input[name="delete-type"]:checked')?.value || 'all-comments';
@@ -411,20 +472,20 @@ class BandCommentCleaner {
       let confirmMessage = '';
       switch (selectedType) {
         case 'all-comments':
-          confirmMessage = `"${this.selectedBandName}" 밴드에 총 ${count}개의 댓글이 있습니다.\n\n정말로 모든 댓글을 쓸어 버리시겠습니까?`;
+          confirmMessage = `"${this.selectedBandName}" 밴드에 총 <span class="text-red-600 font-bold">${count}개</span>의 댓글이 있습니다.<br><br>정말로 모든 댓글을 쓸어 버리시겠습니까?`;
           break;
         case 'keyword-comments':
           const keyword = document.getElementById('keyword-text').value.trim();
-          confirmMessage = `"${this.selectedBandName}" 밴드에서 "${keyword}" 키워드가 포함된 댓글이 ${count}개 발견되었습니다.\n\n정말로 이 ${count}개 댓글을 쓸어 버리시겠습니까?`;
+          confirmMessage = `"${this.selectedBandName}" 밴드에서 "${keyword}" 키워드가 포함된 댓글이 <span class="text-red-600 font-bold">${count}개</span> 발견되었습니다.<br><br>정말로 이 <span class="text-red-600 font-bold">${count}개</span> 댓글을 쓸어 버리시겠습니까?`;
           break;
         case 'all-posts':
-          confirmMessage = `"${this.selectedBandName}" 밴드에 총 ${count}개의 게시글이 있습니다.\n\n⚠️ 게시글과 함께 모든 댓글도 삭제됩니다!\n\n정말로 모든 게시글을 쓸어 버리시겠습니까?`;
+          confirmMessage = `"${this.selectedBandName}" 밴드에 총 <span class="text-red-600 font-bold">${count}개</span>의 게시글이 있습니다.<br><br>⚠️ 게시글과 함께 모든 댓글도 삭제됩니다!<br><br>정말로 모든 게시글을 쓸어 버리시겠습니까?`;
           break;
       }
 
       // 커스텀 confirm 사용
       this.showCustomConfirm(
-        `${confirmMessage}\n\n이 작업은 되돌릴 수 없습니다.`,
+        `${confirmMessage}<br><br><span class="text-gray-600">이 작업은 되돌릴 수 없습니다.</span>`,
         () => this.executeDelete(),
         () => {
           document.getElementById('delete-btn').disabled = false;
@@ -814,7 +875,7 @@ class BandCommentCleaner {
       <div id="${confirmId}" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 animate-fade-in">
         <div class="bg-white rounded-2xl p-6 max-w-md mx-4 shadow-2xl transform animate-scale-in">
           <div class="text-center">
-            <p class="text-gray-800 mb-6 whitespace-pre-line text-lg">${message}</p>
+            <div class="text-gray-800 mb-6 text-lg" id="${confirmId}-message"></div>
             <div class="flex gap-3">
               <button onclick="document.getElementById('${confirmId}').remove(); if(window.customConfirmCancel) window.customConfirmCancel()" 
                       class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 py-3 px-6 rounded-xl font-bold transform hover:scale-105 transition-all duration-200">
@@ -835,6 +896,9 @@ class BandCommentCleaner {
     window.customConfirmCancel = onCancel;
     
     document.body.insertAdjacentHTML('beforeend', confirmHtml);
+    
+    // HTML 메시지 삽입
+    document.getElementById(`${confirmId}-message`).innerHTML = message;
   }
 }
 
