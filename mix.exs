@@ -1,4 +1,4 @@
-defmodule BandToolkit.MixProject do
+defmodule BandSseukssak.MixProject do
   use Mix.Project
 
   def project do

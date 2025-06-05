@@ -138,9 +138,10 @@ defmodule BandCore.API do
     # 필수 파라미터 설정
     params = %{
       access_token: access_token,
-      band_key: band_key
+      band_key: band_key,
+      locale: "ko_KR"  # 한국어 로케일 기본값
     }
-    # 선택적 파라미터 병합 (페이징 등)
+    # 선택적 파라미터 병합 (페이징, 로케일 변경 등)
     |> Map.merge(Enum.into(opts, %{}))
     
     base_url = Application.get_env(:band_core, :api_base_url, @api_base_url)
@@ -230,6 +231,103 @@ defmodule BandCore.API do
       access_token: access_token,
       band_key: band_key,
       post_key: post_key,
+      comment_key: comment_key
+    }
+    
+    base_url = Application.get_env(:band_core, :api_base_url, @api_base_url)
+    url = "#{base_url}/v2/band/post/comment/remove"
+    make_request(:post, url, params)
+  end
+
+  @doc """
+  특정 밴드의 게시글 개수 조회
+  
+  모든 페이지를 순회하여 전체 게시글 개수를 정확히 계산합니다.
+  """
+  def get_posts_count(access_token, band_key) do
+    case BandCore.CommentManager.count_all_posts_in_band(access_token, band_key) do
+      {:ok, count} -> {:ok, count}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  @doc """
+  특정 밴드의 모든 게시글 삭제
+  """
+  def delete_all_posts(access_token, band_key) do
+    case BandCore.CommentManager.delete_all_posts_in_band(access_token, band_key) do
+      {:ok, result} -> {:ok, result}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  @doc """
+  특정 밴드의 앨범 목록 조회
+  
+  밴드의 모든 앨범을 조회합니다.
+  """
+  def get_albums(access_token, band_key, opts \\ []) do
+    params = %{
+      access_token: access_token,
+      band_key: band_key,
+      locale: "ko_KR"
+    }
+    |> Map.merge(Enum.into(opts, %{}))
+    
+    base_url = Application.get_env(:band_core, :api_base_url, @api_base_url)
+    url = "#{base_url}/v2/band/albums"
+    make_request(:get, url, params)
+  end
+
+  @doc """
+  특정 앨범의 사진 목록 조회
+  
+  앨범에 있는 모든 사진을 조회합니다.
+  """
+  def get_album_photos(access_token, band_key, album_key, opts \\ []) do
+    params = %{
+      access_token: access_token,
+      band_key: band_key,
+      photo_album_key: album_key,
+      locale: "ko_KR"
+    }
+    |> Map.merge(Enum.into(opts, %{}))
+    
+    base_url = Application.get_env(:band_core, :api_base_url, @api_base_url)
+    url = "#{base_url}/v2/band/album/photos"
+    make_request(:get, url, params)
+  end
+
+  @doc """
+  특정 사진의 댓글 목록 조회
+  
+  앨범 사진에 달린 댓글을 조회합니다.
+  Band API에서 사진도 post로 취급되므로 post_key로 전달합니다.
+  """
+  def get_photo_comments(access_token, band_key, photo_key, opts \\ []) do
+    params = %{
+      access_token: access_token,
+      band_key: band_key,
+      post_key: photo_key
+    }
+    |> Map.merge(Enum.into(opts, %{}))
+    
+    base_url = Application.get_env(:band_core, :api_base_url, @api_base_url)
+    url = "#{base_url}/v2/band/post/comments"
+    make_request(:get, url, params)
+  end
+
+  @doc """
+  특정 사진 댓글 삭제
+  
+  앨범 사진의 댓글을 삭제합니다.
+  Band API에서 사진도 post로 취급되므로 일반 댓글 삭제 API를 사용합니다.
+  """
+  def delete_photo_comment(access_token, band_key, photo_key, comment_key) do
+    params = %{
+      access_token: access_token,
+      band_key: band_key,
+      post_key: photo_key,
       comment_key: comment_key
     }
     

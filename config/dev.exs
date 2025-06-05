@@ -1,23 +1,30 @@
 import Config
 
+# Configure your database
+config :band_api, BandApi.Repo,
+  username: "postgres",
+  password: "postgres",
+  hostname: "localhost",
+  database: "band_api_dev",
+  stacktrace: true,
+  show_sensitive_data_on_connection_error: true,
+  pool_size: 10
+
 # For development, we disable any cache and enable
 # debugging and code reloading.
 #
 # The watchers configuration can be used to run external
 # watchers to your application. For example, we can use it
 # to bundle .js and .css sources.
-config :band_web, BandWebWeb.Endpoint,
+config :band_api, BandApiWeb.Endpoint,
   # Binding to loopback ipv4 address prevents access from other machines.
   # Change to `ip: {0, 0, 0, 0}` to allow access from other machines.
   http: [ip: {127, 0, 0, 1}, port: 4000],
   check_origin: false,
   code_reloader: true,
   debug_errors: true,
-  secret_key_base: "Rws+Wf+SU3igvW4ifB3vqk0ifAgRSWTJ7+XH4ldSBkaAoD3X/9IcLMQePZUrYMIm",
-  watchers: [
-    esbuild: {Esbuild, :install_and_run, [:band_web, ~w(--sourcemap=inline --watch)]},
-    tailwind: {Tailwind, :install_and_run, [:band_web, ~w(--watch)]}
-  ]
+  secret_key_base: "Geq2KezYDOgVlZiUy5XMQUW60MxfagBavWoUfW69A29Se9SRzGTM7WgHgT36MiMy",
+  watchers: []
 
 # ## SSL Support
 #
@@ -43,10 +50,14 @@ config :band_web, BandWebWeb.Endpoint,
 # different ports.
 
 # Enable dev routes for dashboard and mailbox
-config :band_web, dev_routes: true
+config :band_api, dev_routes: true
 
-# Do not include metadata nor timestamps in development logs
-config :logger, :console, format: "[$level] $message\n", level: :debug
+# 개발 환경에서 예쁜 로그 포맷 (시간, 레벨, 메시지, 컬러)
+config :logger, :console, 
+  format: "\n$time $metadata[$level] $message\n",
+  level: :debug,
+  metadata: [:request_id],
+  colors: [enabled: true]
 
 # Set a higher stacktrace during development. Avoid configuring such
 # in production as building large stacktraces may be expensive.
@@ -58,11 +69,9 @@ config :phoenix, :plug_init_mode, :runtime
 # Disable swoosh api client as it is only required for production adapters.
 config :swoosh, :api_client, false
 
-# 개발 환경에서는 minification 없이 빌드
-config :esbuild,
-  band_web: [
-    args:
-      ~w(js/app.js --bundle --target=es2017 --outdir=../priv/static/assets --external:/fonts/* --external:/images/* --sourcemap=inline),
-    cd: Path.expand("../apps/band_web/assets", __DIR__),
-    env: %{"NODE_PATH" => Path.expand("../deps", __DIR__)}
-  ]
+# Band Core는 이제 라이브러리로만 동작 (웹 서버 없음)
+
+# Band API 개발용 설정 - 환경변수에서 읽어옴
+config :band_api,
+  band_app_client_id: System.get_env("BAND_CLIENT_ID"),
+  band_app_client_secret: System.get_env("BAND_CLIENT_SECRET")

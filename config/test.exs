@@ -1,14 +1,27 @@
 import Config
 
+# Configure your database
+#
+# The MIX_TEST_PARTITION environment variable can be used
+# to provide built-in test partitioning in CI environment.
+# Run `mix help test` for more information.
+config :band_api, BandApi.Repo,
+  username: "postgres",
+  password: "postgres",
+  hostname: "localhost",
+  database: "band_api_test#{System.get_env("MIX_TEST_PARTITION")}",
+  pool: Ecto.Adapters.SQL.Sandbox,
+  pool_size: System.schedulers_online() * 2
+
 # We don't run a server during test. If one is required,
 # you can enable the server option below.
-config :band_web, BandWebWeb.Endpoint,
+config :band_api, BandApiWeb.Endpoint,
   http: [ip: {127, 0, 0, 1}, port: 4002],
-  secret_key_base: "qgOAX8ufSvVfrA2od6osiK/xLLq7xLHFwNaeBbSq5dJZ5C0614UCyJtueE5XNU0Y",
+  secret_key_base: "l6xyldENEaOV60iBwb2+ipCI7YQJCQjFlmB1gHgrv+TRDapKa5u8d2tGfPEHSUWE",
   server: false
 
 # In test we don't send emails
-config :band_web, BandWeb.Mailer, adapter: Swoosh.Adapters.Test
+config :band_api, BandApi.Mailer, adapter: Swoosh.Adapters.Test
 
 # Disable swoosh api client as it is only required for production adapters
 config :swoosh, :api_client, false
@@ -18,3 +31,5 @@ config :logger, level: :warning
 
 # Initialize plugs at runtime for faster test compilation
 config :phoenix, :plug_init_mode, :runtime
+
+

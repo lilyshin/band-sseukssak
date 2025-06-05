@@ -173,6 +173,65 @@ defmodule BandAccounts.OAuth do
     end
   end
 
+  @doc """
+  OAuth 콜백 파라미터 처리
+  
+  인증 서버에서 리다이렉트된 콜백 요청의 파라미터를 처리합니다.
+  성공 시 authorization code를 반환하고, 에러 시 에러 정보를 반환합니다.
+  
+  ## Parameters
+  - `params`: 콜백 요청 파라미터 맵
+    - `code`: authorization code (성공 시)
+    - `error`: 에러 코드 (실패 시)
+    - `error_description`: 에러 설명 (실패 시)
+  
+  ## Returns
+  - `{:ok, %{code: authorization_code}}`: 성공 시
+  - `{:error, %{error: error_code, description: error_description}}`: 실패 시
+  """
+  def handle_callback(%{"code" => code}) do
+    {:ok, %{code: code}}
+  end
+
+  def handle_callback(%{"error" => error} = params) do
+    description = Map.get(params, "error_description", "Unknown error")
+    {:error, %{error: error, description: description}}
+  end
+
+  def handle_callback(_params) do
+    {:error, %{error: "invalid_request", description: "Missing required parameters"}}
+  end
+
+  @doc """
+  파라미터 맵으로부터 access token 발급
+  
+  콜백 파라미터나 폼 데이터에서 필요한 정보를 추출하여 access token을 발급합니다.
+  
+  ## Parameters
+  - `params`: 요청 파라미터 맵
+    - `code`: authorization code
+    - `client_id`: (선택) 클라이언트 ID
+    - `client_secret`: (선택) 클라이언트 시크릿
+  
+  ## Returns
+  - `{:ok, token_data}`: 성공 시 토큰 정보
+  - `{:error, reason}`: 실패 시 에러 정보
+  """
+  def get_access_token(%{"code" => code} = params) do
+    client_id = Map.get(params, "client_id") || Application.get_env(:band_api, :band_app_client_id)
+    client_secret = Map.get(params, "client_secret") || Application.get_env(:band_api, :band_app_client_secret)
+    
+    case {client_id, client_secret} do
+      {nil, _} -> {:error, "Missing client_id"}
+      {_, nil} -> {:error, "Missing client_secret"}
+      {client_id, client_secret} -> get_access_token(client_id, client_secret, code)
+    end
+  end
+
+  def get_access_token(_params) do
+    {:error, "Missing authorization code"}
+  end
+
   @doc false
   # HTTP Basic 인증 헤더 생성
   # 
